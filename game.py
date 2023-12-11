@@ -28,8 +28,10 @@ TILES_W   = int(WIDTH  / TILE_SIZE) / SCALE
 TILES_H   = int(HEIGHT / TILE_SIZE) / SCALE
 
 X_VELOCITY = 1
-Y_VELOCITY = 10
+Y_VELOCITY = 20
 JUMP = False
+
+RUN = 2
 
 class Game:
     def __init__(self, title, width = WIDTH, height = HEIGHT):
@@ -59,11 +61,28 @@ class Game:
         self.player = Entity(0, 7, [[self.tileset.tiles[5]], [self.tileset.tiles[6]]], pyg.Rect((spawn_position.x * REN_TILE_SIZE, spawn_position.y * REN_TILE_SIZE), (REN_TILE_SIZE, REN_TILE_SIZE * 2)), REN_TILE_SIZE)
         self.entities.append(self.player)
 
-        self.background = pyg.image.load('assets/sky_2.png').convert()
+        self.background = pyg.image.load('assets/tree_bg.png').convert()
+        # self.background.set_colorkey((254, 245, 238))
         self.background_rect = self.background.get_rect()
         # pyg.display.set_mode(self.background_rect.size)
 
-    def draw_tiles(self):
+    # https://gamedev.stackexchange.com/a/48580
+    # def drawMap(self, camera_x, camera_y):
+    #     for y in range(self.tilemap.size.y):
+    #         for x in range(self.tilemap.size.x):
+    #             index = self.tilemap.map_to_index(self.tilemap.map[y][x])
+    #             if index:
+    #                 tile_position_x = (x * REN_TILE_SIZE) - camera_x
+    #                 tile_position_y = (y * REN_TILE_SIZE) - camera_y
+    #                 if (self.onscreen(tile_position_x, tile_position_y)):
+    #                     self.screen.blit(self.tileset.tiles[index], (x*REN_TILE_SIZE,y*REN_TILE_SIZE))
+
+    # def onscreen(self, x, y):
+    #     return not (x < REN_TILE_SIZE or x > WIDTH or
+    #                 y < REN_TILE_SIZE or y > HEIGHT)
+
+    def draw_tiles(self, scroll: int = 0):
+        map_rects = []
         for j in range(self.tilemap.size.y):
             for i in range(self.tilemap.size.x):
                 index = self.tilemap.map_to_index(self.tilemap.map[j][i])
@@ -75,7 +94,8 @@ class Game:
                     rect = pyg.Rect(i * REN_TILE_SIZE, j * REN_TILE_SIZE,
                                     REN_TILE_SIZE, REN_TILE_SIZE)
                     self.screen.blit(tile, rect)
-                    self.map_rects.append(rect)
+                    map_rects.append(rect)
+        self.map_rects = map_rects
 
     def draw_title_text(self):
         self.title_text.flash_colors(color.RED, color.GREEN, 100)
@@ -94,54 +114,36 @@ class Game:
 
     def draw_entities(self):
         for entity in self.entities:
-            self.screen.blit(entity.surface_that_we_will_render_the_tiles_onto_such_that_they_will_be_properly_placed_onto_the_final_display, pyg.Rect(entity.rect.left, entity.rect.top, entity.rect.width, entity.rect.height))
+            render_surface = entity.surface_that_we_will_render_the_tiles_onto_such_that_they_will_be_properly_placed_onto_the_final_display
+            if Direction.LEFT in entity.directions:
+                render_surface = pyg.transform.flip(entity.surface_that_we_will_render_the_tiles_onto_such_that_they_will_be_properly_placed_onto_the_final_display, True, False)
+            self.screen.blit(render_surface, pyg.Rect(entity.rect.left, entity.rect.top, entity.rect.width, entity.rect.height))
 
-    def draw(self):
+    def draw(self, scroll: int):
         self.screen.blit(self.background, self.background_rect)
-        self.draw_tiles()
+        self.draw_tiles(scroll)
+        # self.drawMap((WIDTH / 2) + scroll, (HEIGHT / 2) + scroll)
         self.draw_entities()
         self.draw_title_text()
         self.__draw_fps()
+
         pyg.display.flip()
 
-    def move_player(self, x_offset = 0, y_offset = 0):
-        new_rect = pyg.Rect(self.player.rect.x + x_offset * self.player.speed, self.player.rect.y + y_offset * self.player.speed, self.player.rect.width, self.player.rect.height)
-        self.player.rect = new_rect
-        print(new_rect)
+    def move_player(self, speed: int, x_offset: int = 0, y_offset: int = 0):
+        self.player.set_pos(self.player.rect.x + x_offset * speed, self.player.rect.y + y_offset)
+        if x_offset < 0:
+            self.player.set_direction(Direction.LEFT)
+        elif x_offset >= 1:
+            self.player.set_direction(Direction.RIGHT)
 
     def move_enemies(self):
         ...
 
-    def has_intersection(self, pos_1, pos_2):
-        intersection = (None, None)
-        if pos_1[0] == pos_2[0]:
-            intersection.x = pos_1[0]
-        if pos_1[1] == pos_2[1]:
-            intersection.y = pos_1[1]
-        return intersection
-
     def resolve_player_collision(self):
-        for row in self.curr_level.map:
-            for column in row:
-                if column == '#' or column == '-':
-                    # Push the player out of places they shouldn't be!
-                    intersection = self.has_intersection(self.player.pos, (row, column))
-                    x_offset = 0
-                    y_offset = 0
-                    for direction in self.player.directions:
-                        match direction:
-                            case direction.UP:
-                                y_offset -= 1
-                            case direction.DOWN:
-                                y_offset += 1
-                            case direction.LEFT:
-                                x_offset -= 1
-                            case direction.RIGHT:
-                                x_offset += 1
-                    if intersection.x:
-                        self.move_player(x_offset=x_offset)
-                    if intersection.y:
-                        self.move_player(y_offset=-y_offset)
+        for tile_rect in self.map_rects:
+            if self.player.rect.colliderect(tile_rect):
+                self.player.rect = self.player.prev_rect
+                break
 
     def resolve_enemy_collsions(self):
         ...
@@ -162,34 +164,83 @@ class Game:
 
     def resolve_collisions(self):
         self.resolve_player_collision()
-        self.resolve_enemy_collsions()
-        self.resolve_object_collisions()
+        # self.resolve_enemy_collsions()
+        # self.resolve_object_collisions()
+
+    # https://stackoverflow.com/a/55321731
+    def scrollX(self, screenSurf, offsetX):
+        width, height = screenSurf.get_size()
+        copySurf = screenSurf.copy()
+        screenSurf.blit(copySurf, (offsetX, 0))
+        if offsetX < 0:
+            screenSurf.blit(copySurf, (width + offsetX, 0), (0, 0, -offsetX, height))
+        else:
+            screenSurf.blit(copySurf, (0, 0), (width - offsetX, 0, offsetX, height))
+
+    def scroll_screen(self, direction: Direction):
+        if self.player.rect.centerx >= WIDTH / 2:
+            if direction == Direction.LEFT:
+                self.scrollX(self.background, 10)
+                # self.background.scroll(10, 0)
+            elif direction == Direction.RIGHT:
+                self.scrollX(self.background, -10)
+                # self.background.scroll(-10, 0)
+
+            # for i in range(len(self.map_rects)):
+            #     print(f'old: {self.map_rects[i]}')
+            #     rect: pyg.Rect = self.map_rects[i]
+            #     self.map_rects[i] = pyg.Rect(rect.left - 10, rect.top, rect.width, rect.height)
+            #     print(f'new: {self.map_rects[i]}')
 
     def run(self):
         global JUMP, Y_VELOCITY
         keys = pyg.key.get_pressed()
 
-        if keys[pyg.K_a]:
-            self.move_player(x_offset=-1)
-        elif keys[pyg.K_d]:
-            self.move_player(x_offset=1)
+        player_speed = self.player.speed
+        scroll = 0
 
-        # TODO: yeah, jumping is broke af
+        if keys[pyg.K_LSHIFT]:
+            player_speed *= RUN
+
+        if keys[pyg.K_a]:
+            self.move_player(player_speed, x_offset=-1)
+            self.scroll_screen(Direction.LEFT)
+            scroll = 10
+        elif keys[pyg.K_d]:
+            self.move_player(player_speed, x_offset=1)
+            self.scroll_screen(Direction.RIGHT)
+            if self.player.rect.centerx >= WIDTH / 2:
+                scroll = -10
+
+        # We're doing great!
         if JUMP is False and keys[pyg.K_SPACE]:
             JUMP = True
         if JUMP is True:
             Y_VELOCITY -= 1
-            self.move_player(y_offset=-Y_VELOCITY)
-            if Y_VELOCITY <= -9:
+            self.move_player(player_speed, y_offset=-Y_VELOCITY)
+            # print(self.player.is_on_ground(self.map_rects))
+            if self.player.is_on_ground(self.map_rects):
+                # self.player.rect = self.player.prev_rect
                 JUMP = False
-                Y_VELOCITY = 10
+                Y_VELOCITY = 20
 
-        # TODO: make crouch sprite
+        if not JUMP and not self.player.is_on_ground(self.map_rects):
+            self.move_player(player_speed, y_offset=Y_VELOCITY)
+
         if keys[pyg.K_s]:
-            self.move_player(y_offset=1)
+            self.player.tiles = [[self.tileset.tiles[8]]]
+            self.player.rect = pyg.Rect(self.player.rect.left, self.player.rect.top + REN_TILE_SIZE, REN_TILE_SIZE, REN_TILE_SIZE)
+            self.player.surface_that_we_will_render_the_tiles_onto_such_that_they_will_be_properly_placed_onto_the_final_display.fill((0, 0, 0))
+            self.player.render(REN_TILE_SIZE)
+        else:
+            self.player.tiles = [[self.tileset.tiles[5]], [self.tileset.tiles[6]]]
+            self.player.rect = pyg.Rect(self.player.rect.left, self.player.rect.top, REN_TILE_SIZE, REN_TILE_SIZE * 2)
+            self.player.surface_that_we_will_render_the_tiles_onto_such_that_they_will_be_properly_placed_onto_the_final_display.fill((0, 0, 0))
+            self.player.render(REN_TILE_SIZE)
 
-        # self.resolve_collisions()
-        self.draw()
+        self.resolve_collisions()
+
+        self.draw(scroll)
         self.clock.tick(self.fps)
     
 if __name__ == '__main__':
