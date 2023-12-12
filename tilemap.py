@@ -9,16 +9,19 @@ from common import *
 class Tilemap:
     def __init__(self, file: str, tileset: Tileset, size: Vec2, rect: pyg.Rect|None = None):
         self.tileset = tileset
-        self.size = Vec2(int(size.x), int(size.y))
-        w, h = self.size
+        # self.size = Vec2(int(size.x), int(size.y))
 
         # The resolution of the image matches the actual
         # rendered resolution of the final display
-        self.image = pyg.Surface((self.size.x * self.tileset.scale * self.tileset.tile_size,
-                                  self.size.y * self.tileset.scale * self.tileset.tile_size))
+        # self.image = pyg.Surface((self.size.x * self.tileset.scale * self.tileset.tile_size,
+        #                           self.size.y * self.tileset.scale * self.tileset.tile_size))
         self.file = os.path.join(os.path.dirname(__file__), 'assets', file)
         with open(self.file, 'r') as map_file:
             self.map = [line.strip() for line in map_file.readlines()]
+        self.size = Vec2(len(self.map[0]), len(self.map))
+        
+        self.image = pyg.Surface((self.size.x * self.tileset.scale * self.tileset.tile_size,
+                                  self.size.y * self.tileset.scale * self.tileset.tile_size))
 
         if rect:
             self.rect = pyg.Rect(rect)

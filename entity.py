@@ -55,7 +55,7 @@ class Entity:
                 # and if it collides with the rect, we win.
                 # print(f'Map rect: {map_rect=}\nTesting point: {(map_rect.centerx, self.rect.bottom + ray_len)}')
                 if map_rect.collidepoint(self.rect.centerx, self.rect.bottom + ray_len):
-                    print('landed!')
+                    # print('landed!')
                     return True
         # print('no!')
         return False

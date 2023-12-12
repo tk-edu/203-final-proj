@@ -61,10 +61,12 @@ class Game:
         self.player = Entity(0, 7, [[self.tileset.tiles[5]], [self.tileset.tiles[6]]], pyg.Rect((spawn_position.x * REN_TILE_SIZE, spawn_position.y * REN_TILE_SIZE), (REN_TILE_SIZE, REN_TILE_SIZE * 2)), REN_TILE_SIZE)
         self.entities.append(self.player)
 
-        self.background = pyg.image.load('assets/tree_bg.png').convert()
+        self.background = pyg.image.load('assets/sky_2.png').convert()
         # self.background.set_colorkey((254, 245, 238))
         self.background_rect = self.background.get_rect()
         # pyg.display.set_mode(self.background_rect.size)
+
+        self.offset = Vec2(0, 0)
 
     # https://gamedev.stackexchange.com/a/48580
     # def drawMap(self, camera_x, camera_y):
@@ -81,7 +83,7 @@ class Game:
     #     return not (x < REN_TILE_SIZE or x > WIDTH or
     #                 y < REN_TILE_SIZE or y > HEIGHT)
 
-    def draw_tiles(self, scroll: int = 0):
+    def draw_tiles(self):
         map_rects = []
         for j in range(self.tilemap.size.y):
             for i in range(self.tilemap.size.x):
@@ -91,7 +93,7 @@ class Game:
                 # it'll be "transparent" because we're not going to blit it
                 if index != None:
                     tile = self.tileset.tiles[index]
-                    rect = pyg.Rect(i * REN_TILE_SIZE, j * REN_TILE_SIZE,
+                    rect = pyg.Rect(i * REN_TILE_SIZE + self.offset.x, j * REN_TILE_SIZE + self.offset.y,
                                     REN_TILE_SIZE, REN_TILE_SIZE)
                     self.screen.blit(tile, rect)
                     map_rects.append(rect)
@@ -119,9 +121,9 @@ class Game:
                 render_surface = pyg.transform.flip(entity.surface_that_we_will_render_the_tiles_onto_such_that_they_will_be_properly_placed_onto_the_final_display, True, False)
             self.screen.blit(render_surface, pyg.Rect(entity.rect.left, entity.rect.top, entity.rect.width, entity.rect.height))
 
-    def draw(self, scroll: int):
+    def draw(self):
         self.screen.blit(self.background, self.background_rect)
-        self.draw_tiles(scroll)
+        self.draw_tiles()
         # self.drawMap((WIDTH / 2) + scroll, (HEIGHT / 2) + scroll)
         self.draw_entities()
         self.draw_title_text()
@@ -197,20 +199,29 @@ class Game:
         keys = pyg.key.get_pressed()
 
         player_speed = self.player.speed
-        scroll = 0
+
+        print(f' {self.offset.x}', end='\r')
 
         if keys[pyg.K_LSHIFT]:
             player_speed *= RUN
 
         if keys[pyg.K_a]:
-            self.move_player(player_speed, x_offset=-1)
             self.scroll_screen(Direction.LEFT)
-            scroll = 10
+            # Start scrolling back once we're 6 tiles from the left, but
+            # stop if we get too close to the left edge of the screen
+            # WIP
+            if self.player.rect.centerx <= REN_TILE_SIZE * 6: 
+                self.offset.x += 10
+            else:
+                self.move_player(player_speed, x_offset=-1)
+
         elif keys[pyg.K_d]:
-            self.move_player(player_speed, x_offset=1)
             self.scroll_screen(Direction.RIGHT)
+            # Start scrolling forward once we're at the center of the screen
             if self.player.rect.centerx >= WIDTH / 2:
-                scroll = -10
+                self.offset.x -= 10
+            else:
+                self.move_player(player_speed, x_offset=1)
 
         # We're doing great!
         if JUMP is False and keys[pyg.K_SPACE]:
@@ -240,7 +251,7 @@ class Game:
 
         self.resolve_collisions()
 
-        self.draw(scroll)
+        self.draw()
         self.clock.tick(self.fps)
     
 if __name__ == '__main__':
