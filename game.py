@@ -14,8 +14,10 @@ from image import *
 WIDTH     = 1024
 HEIGHT    =  768
 TILE_SIZE =   16
+"""The size in pixels of each tile"""
 SCALE     =    4
 REN_TILE_SIZE = TILE_SIZE * SCALE
+"""The size in pixels of each tile after scaling"""
 
 FPS       = 60
 
@@ -36,7 +38,7 @@ RUN = 2
 class Game:
     def __init__(self, title, width = WIDTH, height = HEIGHT):
         pyg.init()
-        font = pyg.font.SysFont('CozetteVector', FONT_SIZE)
+        font = pyg.font.SysFont(FONT, FONT_SIZE)
 
         self.screen = pyg.display.set_mode((width, height))
         pyg.display.set_caption(title)
@@ -73,21 +75,6 @@ class Game:
 
         self.offset = Vec2(0, 0)
 
-    # https://gamedev.stackexchange.com/a/48580
-    # def drawMap(self, camera_x, camera_y):
-    #     for y in range(self.tilemap.size.y):
-    #         for x in range(self.tilemap.size.x):
-    #             index = self.tilemap.map_to_index(self.tilemap.map[y][x])
-    #             if index:
-    #                 tile_position_x = (x * REN_TILE_SIZE) - camera_x
-    #                 tile_position_y = (y * REN_TILE_SIZE) - camera_y
-    #                 if (self.onscreen(tile_position_x, tile_position_y)):
-    #                     self.screen.blit(self.tileset.tiles[index], (x*REN_TILE_SIZE,y*REN_TILE_SIZE))
-
-    # def onscreen(self, x, y):
-    #     return not (x < REN_TILE_SIZE or x > WIDTH or
-    #                 y < REN_TILE_SIZE or y > HEIGHT)
-
     def draw_tiles(self):
         map_rects = []
         for j in range(self.tilemap.size.y):
@@ -96,9 +83,10 @@ class Game:
                 # If there's an index without a tile (according
                 # to the hard-coded `map_to_index` function), then
                 # it'll be "transparent" because we're not going to blit it
-                if index != None:
+                if index != None and index != 14 and index != 15:
                     tile = self.tileset.tiles[index]
-                    rect = pyg.Rect(i * REN_TILE_SIZE + self.offset.x, j * REN_TILE_SIZE + self.offset.y,
+                    rect = pyg.Rect(i * REN_TILE_SIZE + self.offset.x,
+                                    j * REN_TILE_SIZE + self.offset.y,
                                     REN_TILE_SIZE, REN_TILE_SIZE)
                     self.screen.blit(tile, rect)
                     map_rects.append(rect)
@@ -113,12 +101,6 @@ class Game:
         self.__fps_text.update(str(int(self.clock.get_fps())))
         self.screen.blit(self.__fps_text.surface, (0, 0))
     
-    # # https://stackoverflow.com/a/4935466
-    # def range_with_float_step(self, start, stop, step):
-    #     num_elements = int((stop - start) / float(step))
-    #     for i in range(num_elements + 1):
-    #         yield start + i * step
-
     def draw_entities(self):
         for entity in self.entities:
             render_surface = entity.surface_that_we_will_render_the_tiles_onto_such_that_they_will_be_properly_placed_onto_the_final_display
@@ -129,7 +111,6 @@ class Game:
     def draw(self):
         self.screen.blit(self.background, self.background_rect)
         self.draw_tiles()
-        # self.drawMap((WIDTH / 2) + scroll, (HEIGHT / 2) + scroll)
         self.draw_entities()
         self.draw_title_text()
         self.__draw_fps()
@@ -188,12 +169,6 @@ class Game:
             elif direction == Direction.RIGHT:
                 self.scrollX(self.background, -10)
                 # self.background.scroll(-10, 0)
-
-            # for i in range(len(self.map_rects)):
-            #     print(f'old: {self.map_rects[i]}')
-            #     rect: pyg.Rect = self.map_rects[i]
-            #     self.map_rects[i] = pyg.Rect(rect.left - 10, rect.top, rect.width, rect.height)
-            #     print(f'new: {self.map_rects[i]}')
 
     def run(self):
         global JUMP, Y_VELOCITY
