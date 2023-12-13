@@ -143,8 +143,15 @@ class Game:
         elif x_offset >= 1:
             self.player.set_direction(Direction.RIGHT)
 
-    def move_enemies(self):
-        ...
+    def move_enemies(self, speed: int, x_offset: int = 1, y_offset: int = 0):
+        if self.elf.rect.x >= 7:
+            self.elf.set_pos(self.elf.rect.x - x_offset * speed, self.elf.rect.y + y_offset)
+        elif self.elf.rect.x <= 1:
+            self.elf.set_pos(self.elf.rect.x + x_offset * speed, self.elf.rect.y + y_offset)
+        if x_offset < 0:
+            self.elf.set_direction(Direction.LEFT)
+        elif x_offset >= 1:
+            self.elf.set_direction(Direction.RIGHT)
 
     def resolve_player_collision(self):
         for tile_rect in self.map_rects:
@@ -193,6 +200,7 @@ class Game:
         keys = pyg.key.get_pressed()
 
         player_speed = self.player.speed
+        elf_speed  = self.elf.speed
 
         print(f' {self.offset.x}', end='\r')
 
@@ -244,7 +252,7 @@ class Game:
             self.player.render(REN_TILE_SIZE)
 
         self.resolve_collisions()
-
+        self.move_enemies(elf_speed)
         self.draw()
         self.clock.tick(self.fps)
     
