@@ -61,6 +61,11 @@ class Game:
         self.player = Entity(0, 7, [[self.tileset.tiles[5]], [self.tileset.tiles[6]]], pyg.Rect((spawn_position.x * REN_TILE_SIZE, spawn_position.y * REN_TILE_SIZE), (REN_TILE_SIZE, REN_TILE_SIZE * 2)), REN_TILE_SIZE)
         self.entities.append(self.player)
 
+        #hopefully make an enemy
+        elf_spawn_position = self.tilemap.get_elf_spawn()
+        self.elf = Entity(1, 4, [[self.tileset.tiles[0]], [self.tileset.tiles[2]]], pyg.Rect((elf_spawn_position.x * REN_TILE_SIZE, elf_spawn_position.y * REN_TILE_SIZE), (REN_TILE_SIZE, REN_TILE_SIZE * 2)), REN_TILE_SIZE)
+        self.entities.append(self.elf)
+
         self.background = pyg.image.load('assets/sky_2.png').convert()
         # self.background.set_colorkey((254, 245, 238))
         self.background_rect = self.background.get_rect()
@@ -151,18 +156,7 @@ class Game:
         ...
 
     def resolve_object_collisions(self, x_position, y_position):
-        #prevents character from going past right wall
-        if x_position >= (WIDTH - PIXEL):
-            x_position = (WIDTH - PIXEL)
-        #prevents characetr from going past left wall
-        if x_position >= 0:
-            x_positon = 0
-        #prevents character from going past bottom
-        if y_position >= (HEIGHT - PIXEL):
-            y_positon = (HEIGHT - PIXEL)
-        #prevents chsrscter from going past top
-        if y_positon >= 0:
-            y_positon = 0
+        ...
 
     def resolve_collisions(self):
         self.resolve_player_collision()

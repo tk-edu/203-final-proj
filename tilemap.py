@@ -50,3 +50,9 @@ class Tilemap:
             for x in range(len(self.map[0])):
                 if self.map[y][x] == 'S':
                     return Vec2(x, y)
+                
+    def get_elf_spawn(self) -> Vec2(int, int):
+        for y in range(len(self.map)):
+            for x in range(len(self.map[0])):
+                if self.map[y][x] == 'E':
+                    return Vec2(x, y)
