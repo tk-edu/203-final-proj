@@ -22,7 +22,6 @@ class Tilemap:
         
         self.image = pyg.Surface((self.size.x * self.tileset.scale * self.tileset.tile_size,
                                   self.size.y * self.tileset.scale * self.tileset.tile_size))
-
         if rect:
             self.rect = pyg.Rect(rect)
         else:
@@ -31,20 +30,14 @@ class Tilemap:
     # Lol, hard-coded offests into the tileset...
     def map_to_index(self, character: str) -> int|None:
         match character:
-            case '-':
-                return 10
-            case '_':
-                return 11
-            case '~':
-                return 13
-            case '#':
-                return 12
-            case 'c':
-                return 14
-            case 'd':
-                return 15
+            case '-': return 10
+            case '_': return 11
+            case '~': return 13
+            case '#': return 12
+            case 'c': return 14
+            case 'd': return 15
         return None
-    
+
     def get_spawn(self) -> Vec2(int, int):
         for y in range(len(self.map)):
             for x in range(len(self.map[0])):
