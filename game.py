@@ -139,14 +139,26 @@ class Game:
                 self.player.set_direction(Direction.RIGHT)
 
     def move_enemies(self, speed: float, x_offset: int = 1, y_offset: int = 0):
-        if self.elf.rect.x >= self.player.rect.x:
-            self.elf.set_pos(self.elf.rect.x - x_offset * speed, self.elf.rect.y + y_offset)
-        elif self.elf.rect.x <= self.player.x:
-            self.elf.set_pos(self.elf.rect.x + x_offset * speed, self.elf.rect.y + y_offset)
-        if x_offset < 0:
-            self.elf.set_direction(Direction.LEFT)
-        elif x_offset >= 1:
+        distance_x = self.player.rect.x - self.elf.rect.x
+        distance_y = self.player.rect.y - self.elf.rect.y
+        distance = (distance_x ** 2 + distance_y ** 2) ** .5
+        if self.elf.is_on_ground(self.map_rects):
+            ...
+        elif not self.elf.is_on_ground(self.map_rects):
+            ...
+        if distance_x < 0:
             self.elf.set_direction(Direction.RIGHT)
+        elif distance_x >= 1:
+            self.elf.set_direction(Direction.LEFT)
+        #TODO for some reason it doesn't work when player 
+        #distance is specified don't ask me why, I literally 
+        #have no idea. Anyway fix that and also add gravity.
+        #if distance < 200:
+        if distance != 0:
+                #self.elf.set_pos(self.elf.rect.x + speed * distance_x / distance, self.elf.rect.y + y_offset)
+            self.elf.rect.x += speed * distance_x / distance
+                #self.elf.rect.y += speed * distance_y / distance
+            
 
     # TODO: use pyg.Sprite
     def resolve_player_collision(self):
@@ -260,7 +272,7 @@ class Game:
         #     self.player.rect = pyg.Rect(self.player.rect.left, self.player.rect.top, REN_TILE_SIZE, REN_TILE_SIZE * 2)
         #     self.player.surface_that_we_will_render_the_tiles_onto_such_that_they_will_be_properly_placed_onto_the_final_display.fill((0, 0, 0))
         #     self.player.render(REN_TILE_SIZE)
-
+        self.move_enemies(2)
         self.resolve_collisions()
         #self.move_enemies(elf_speed)
         self.draw()
