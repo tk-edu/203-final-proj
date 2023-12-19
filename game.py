@@ -33,7 +33,11 @@ X_VELOCITY = 1
 Y_VELOCITY = 20
 JUMP = False
 
-RUN = 2
+FRAME_ADVANCE = False
+
+BASE_ACCEL = 1
+
+RUN = 1.5
 
 class Game:
     def __init__(self, title, width = WIDTH, height = HEIGHT):
@@ -55,17 +59,23 @@ class Game:
         # Rects to be used for collision detection
         self.map_rects = []
         self.entities = []
+        self.debug_surface = pyg.Surface((0, 0))
+        self.intersection_rect = pyg.Rect(0, 0, 0, 0)
         # The TILES index!!! (yes i agree) is very much so indeed
         # based on the OFFSET INTO THE tileset.png file in which
         # our tile asSets are Being stored! so Don't Ask me where
         # thesE numb eres came from.!
         spawn_position = self.tilemap.get_spawn()
-        self.player = Entity(0, 7, [[self.tileset.tiles[5]], [self.tileset.tiles[6]]], pyg.Rect((spawn_position.x * REN_TILE_SIZE, spawn_position.y * REN_TILE_SIZE), (REN_TILE_SIZE, REN_TILE_SIZE * 2)), REN_TILE_SIZE)
+        self.player = Entity(0, 5, [[self.tileset.tiles[5]], [self.tileset.tiles[6]]],
+                             pyg.Rect((spawn_position.x * REN_TILE_SIZE, spawn_position.y * REN_TILE_SIZE),
+                                      (REN_TILE_SIZE, REN_TILE_SIZE * 2)), REN_TILE_SIZE)
         self.entities.append(self.player)
 
         #hopefully make an enemy
         elf_spawn_position = self.tilemap.get_elf_spawn()
-        self.elf = Entity(1, 4, [[self.tileset.tiles[0]], [self.tileset.tiles[2]]], pyg.Rect((elf_spawn_position.x * REN_TILE_SIZE, elf_spawn_position.y * REN_TILE_SIZE), (REN_TILE_SIZE, REN_TILE_SIZE * 2)), REN_TILE_SIZE)
+        self.elf = Entity(1, 4, [[self.tileset.tiles[0]], [self.tileset.tiles[2]]],
+                          pyg.Rect((elf_spawn_position.x * REN_TILE_SIZE, elf_spawn_position.y * REN_TILE_SIZE),
+                                   (REN_TILE_SIZE, REN_TILE_SIZE * 2)), REN_TILE_SIZE)
         self.entities.append(self.elf)
 
         self.background = pyg.image.load('assets/sky_2.png').convert()
@@ -83,13 +93,15 @@ class Game:
                 # If there's an index without a tile (according
                 # to the hard-coded `map_to_index` function), then
                 # it'll be "transparent" because we're not going to blit it
-                if index != None and index != 14 and index != 15:
+                if index != None:
                     tile = self.tileset.tiles[index]
                     rect = pyg.Rect(i * REN_TILE_SIZE + self.offset.x,
                                     j * REN_TILE_SIZE + self.offset.y,
                                     REN_TILE_SIZE, REN_TILE_SIZE)
                     self.screen.blit(tile, rect)
-                    map_rects.append(rect)
+                    # Don't give clouds collision (DGCC)
+                    if index != 14 and index != 15:
+                        map_rects.append(rect)
         self.map_rects = map_rects
 
     def draw_title_text(self):
@@ -112,33 +124,41 @@ class Game:
         self.screen.blit(self.background, self.background_rect)
         self.draw_tiles()
         self.draw_entities()
-        self.draw_title_text()
+        # self.draw_title_text()
+        self.screen.fill((255, 0, 0), self.intersection_rect)
         self.__draw_fps()
 
         pyg.display.flip()
 
-    def move_player(self, speed: int, x_offset: int = 0, y_offset: int = 0):
+    def move_player(self, speed: float, x_offset: int = 0, y_offset: int = 0, change_direction: bool = True):
         self.player.set_pos(self.player.rect.x + x_offset * speed, self.player.rect.y + y_offset)
-        if x_offset < 0:
-            self.player.set_direction(Direction.LEFT)
-        elif x_offset >= 1:
-            self.player.set_direction(Direction.RIGHT)
+        if change_direction:
+            if x_offset < 0:
+                self.player.set_direction(Direction.LEFT)
+            elif x_offset >= 1:
+                self.player.set_direction(Direction.RIGHT)
 
-    def move_enemies(self, speed: int, x_offset: int = 1, y_offset: int = 0):
-        if self.elf.rect.x >= 7:
+    def move_enemies(self, speed: float, x_offset: int = 1, y_offset: int = 0):
+        if self.elf.rect.x >= self.player.rect.x:
             self.elf.set_pos(self.elf.rect.x - x_offset * speed, self.elf.rect.y + y_offset)
-        elif self.elf.rect.x <= 1:
+        elif self.elf.rect.x <= self.player.x:
             self.elf.set_pos(self.elf.rect.x + x_offset * speed, self.elf.rect.y + y_offset)
         if x_offset < 0:
             self.elf.set_direction(Direction.LEFT)
         elif x_offset >= 1:
             self.elf.set_direction(Direction.RIGHT)
 
+    # TODO: use pyg.Sprite
     def resolve_player_collision(self):
         for tile_rect in self.map_rects:
-            if self.player.rect.colliderect(tile_rect):
-                self.player.rect = self.player.prev_rect
-                break
+            intersection = tile_rect.clip(self.player.rect)
+            if intersection.width:
+                self.intersection_rect = intersection
+                print(f'[\t{intersection.left=}, {self.player.rect.right=}\n\t{intersection.right=}, {self.player.rect.left=}\n]')
+            if intersection.left   <   self.player.rect.left:   self.move_player(self.player.speed, x_offset=-intersection.width, change_direction=False); #self.intersection_rect = intersection
+            if intersection.right  >   self.player.rect.right:  self.move_player(self.player.speed, x_offset=intersection.width, change_direction=False); #self.intersection_rect = intersection
+            if intersection.top    <=  self.player.rect.top:    self.move_player(self.player.speed, y_offset=intersection.height, change_direction=False)
+            if intersection.bottom >=  self.player.rect.bottom: self.move_player(self.player.speed, y_offset=-intersection.height, change_direction=False)
 
     def resolve_enemy_collsions(self):
         ...
@@ -177,28 +197,8 @@ class Game:
         player_speed = self.player.speed
         elf_speed  = self.elf.speed
 
-        print(f' {self.offset.x}', end='\r')
-
         if keys[pyg.K_LSHIFT]:
             player_speed *= RUN
-
-        if keys[pyg.K_a]:
-            self.scroll_screen(Direction.LEFT)
-            # Start scrolling back once we're 6 tiles from the left, but
-            # stop if we get too close to the left edge of the screen
-            # WIP
-            if self.player.rect.centerx <= REN_TILE_SIZE * 6: 
-                self.offset.x += 10
-            else:
-                self.move_player(player_speed, x_offset=-1)
-
-        elif keys[pyg.K_d]:
-            self.scroll_screen(Direction.RIGHT)
-            # Start scrolling forward once we're at the center of the screen
-            if self.player.rect.centerx >= WIDTH / 2:
-                self.offset.x -= 10
-            else:
-                self.move_player(player_speed, x_offset=1)
 
         # We're doing great!
         if JUMP is False and keys[pyg.K_SPACE]:
@@ -206,39 +206,92 @@ class Game:
         if JUMP is True:
             Y_VELOCITY -= 1
             self.move_player(player_speed, y_offset=-Y_VELOCITY)
-            # print(self.player.is_on_ground(self.map_rects))
             if self.player.is_on_ground(self.map_rects):
-                # self.player.rect = self.player.prev_rect
                 JUMP = False
                 Y_VELOCITY = 20
 
         if not JUMP and not self.player.is_on_ground(self.map_rects):
             self.move_player(player_speed, y_offset=Y_VELOCITY)
 
-        if keys[pyg.K_s]:
-            self.player.tiles = [[self.tileset.tiles[8]]]
-            self.player.rect = pyg.Rect(self.player.rect.left, self.player.rect.top + REN_TILE_SIZE, REN_TILE_SIZE, REN_TILE_SIZE)
-            self.player.surface_that_we_will_render_the_tiles_onto_such_that_they_will_be_properly_placed_onto_the_final_display.fill((0, 0, 0))
-            self.player.render(REN_TILE_SIZE)
-        else:
-            self.player.tiles = [[self.tileset.tiles[5]], [self.tileset.tiles[6]]]
-            self.player.rect = pyg.Rect(self.player.rect.left, self.player.rect.top, REN_TILE_SIZE, REN_TILE_SIZE * 2)
-            self.player.surface_that_we_will_render_the_tiles_onto_such_that_they_will_be_properly_placed_onto_the_final_display.fill((0, 0, 0))
-            self.player.render(REN_TILE_SIZE)
+        if keys[pyg.K_a]:
+            # self.scroll_screen(Direction.LEFT)
+            # Start scrolling back once we're 6 tiles from the left, but
+            # stop if we get too close to the left edge of the screen
+            if self.player.rect.centerx <= REN_TILE_SIZE * 6:
+                speed_modifier = 1
+                if player_speed == self.player.speed * RUN:
+                    speed_modifier = RUN
+                elif player_speed == self.player.reverse_speed:
+                    speed_modifier = 0.5
+                self.offset.x += player_speed
+            else:
+                if Direction.RIGHT in self.player.directions:
+                    player_speed = self.player.reverse_speed
+                if self.player.is_on_ground(self.map_rects):
+                    self.move_player(player_speed, x_offset=-1)
+                else:
+                    self.move_player(player_speed, x_offset=-1, change_direction=False)
+
+        elif keys[pyg.K_d]:
+            # self.scroll_screen(Direction.RIGHT)
+            # Start scrolling forward once we're at the center of the screen
+            if self.player.rect.centerx >= WIDTH / 2:
+                speed_modifier = 1
+                if player_speed == self.player.speed * RUN:
+                    speed_modifier = RUN
+                elif player_speed == self.player.reverse_speed:
+                    speed_modifier = 0.5
+                self.offset.x -= player_speed
+            else:
+                if Direction.LEFT in self.player.directions:
+                    player_speed = self.player.reverse_speed
+                if self.player.is_on_ground(self.map_rects):
+                    self.move_player(player_speed, x_offset=1)
+                else:
+                    self.move_player(player_speed, x_offset=1, change_direction=False)
+
+        # if keys[pyg.K_s]:
+        #     self.player.tiles = [[self.tileset.tiles[8]]]
+        #     self.player.rect = pyg.Rect(self.player.rect.left, self.player.rect.top + REN_TILE_SIZE, REN_TILE_SIZE, REN_TILE_SIZE)
+        #     self.player.surface_that_we_will_render_the_tiles_onto_such_that_they_will_be_properly_placed_onto_the_final_display.fill((0, 0, 0))
+        #     self.player.render(REN_TILE_SIZE)
+        # else:
+        #     self.player.tiles = [[self.tileset.tiles[5]], [self.tileset.tiles[6]]]
+        #     self.player.rect = pyg.Rect(self.player.rect.left, self.player.rect.top, REN_TILE_SIZE, REN_TILE_SIZE * 2)
+        #     self.player.surface_that_we_will_render_the_tiles_onto_such_that_they_will_be_properly_placed_onto_the_final_display.fill((0, 0, 0))
+        #     self.player.render(REN_TILE_SIZE)
 
         self.resolve_collisions()
-        self.move_enemies(elf_speed)
+        #self.move_enemies(elf_speed)
         self.draw()
+        self.screen.blit(self.debug_surface, (WIDTH - self.intersection_rect.width, self.intersection_rect.height))
         self.clock.tick(self.fps)
     
 if __name__ == '__main__':
     game = Game("Holiday Adventure 1: Santa's Last Wish - Starring Kandy Kayne")
+    frame_advance_count = 0
     exit = False
     while not exit:
         for event in pyg.event.get():
             match event.type:
+                case pyg.KEYDOWN:
+                    if event.key == pyg.K_f:
+                        pyg.key.set_repeat(125)
+                        if not FRAME_ADVANCE:
+                            FRAME_ADVANCE = True
+                            print('frame advance on ', end='\r')
+                        else:
+                            frame_advance_count += 1
+                            print(f'frame advance on ({frame_advance_count})', end='\r')
+                            game.run()
+                    elif FRAME_ADVANCE and event.key == pyg.K_p:
+                        pyg.key.set_repeat(0)
+                        frame_advance_count = 0
+                        print('\nframe advance off')
+                        FRAME_ADVANCE = False
                 case pyg.QUIT:
                     exit = True
-        game.run()
+        if not FRAME_ADVANCE:
+            game.run()
     pyg.quit()
 # https://github.com/kidscancode/pyg_tutorials/blob/master/tilemap/part%2001/main.py
